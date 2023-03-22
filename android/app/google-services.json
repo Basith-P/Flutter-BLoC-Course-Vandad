@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "23140702446",
+    "project_id": "photo-storage-bloc-vandad",
+    "storage_bucket": "photo-storage-bloc-vandad.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:23140702446:android:705dc65f6b3e6f515a3bff",
+        "android_client_info": {
+          "package_name": "com.bns.flutter_bloc_course_vandad"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "23140702446-08737488mb0hj50iu7tk2c40ccop9srh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-qmLDJvecY6PJs1TN1qdAbSDNrqS8m94"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "23140702446-08737488mb0hj50iu7tk2c40ccop9srh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

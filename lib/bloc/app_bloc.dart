@@ -1,67 +1,183 @@
 import 'package:bloc/bloc.dart';
+import 'package:equatable/equatable.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:meta/meta.dart';
 
-import '../apis/login_api.dart';
-import '../apis/nots_ap.dart';
-import '../models.dart';
-import 'actions.dart';
-import 'app_state.dart';
+import '../auth/auth_errors.dart';
+import '../utils/extensions.dart';
+import '../utils/functions/upload_images.dart';
 
-class AppBloc extends Bloc<AppAction, AppState> {
-  final LoginApiProtocol loginApi;
-  final NotesApiProtocol notesApi;
+part 'app_event.dart';
+part 'app_state.dart';
 
-  AppBloc({
-    required this.loginApi,
-    required this.notesApi,
-  }) : super(const AppState.empty()) {
-    on<LoginAction>(_onLoginAction);
-    on<LoadNotesAction>(_onLoadNotesAction);
+class AppBloc extends Bloc<AppEvent, AppState> {
+  AppBloc() : super(const AppStateLoggedOut()) {
+    on<AppEventInitialize>(_onInitialize);
+    on<AppEventRegister>(_onRegister);
+    on<AppEventGoToRegistration>(_onGoToRegistration);
+    on<AppEventGoToLogin>(_onInitialize);
+    on<AppEventLogIn>(_onLogIn);
+    on<AppEventLogOut>(_onLogOut);
+    on<AppEventDeleteAccount>(_onDeleteAccount);
+    on<AppEventUploadImage>(_onUploadImage);
   }
 
-  void _onLoginAction(LoginAction action, Emitter<AppState> emit) async {
-    emit(const AppState(
-        isLoading: true,
-        loginError: null,
-        loginHandle: null,
-        fetchedNotes: null));
+  _onInitialize(event, emit) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      emit(const AppStateLoggedOut());
+      return;
+    }
 
-    final loginHandle =
-        await loginApi.login(email: action.email, password: action.password);
-
-    emit(AppState(
+    final images = await getImages(user.uid);
+    emit(AppStateLoggedIn(
       isLoading: false,
-      loginError: loginHandle == null ? LoginErrors.invalidHandle : null,
-      loginHandle: loginHandle,
-      fetchedNotes: null,
+      user: user,
+      images: images,
     ));
   }
 
-  void _onLoadNotesAction(
-      LoadNotesAction action, Emitter<AppState> emit) async {
-    emit(AppState(
+  _onGoToRegistration(event, emit) async {
+    emit(const AppStateInRegistrationView());
+  }
+
+  _onRegister(event, emit) async {
+    emit(const AppStateInRegistrationView(isLoading: true));
+
+    try {
+      final userCreds = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+              email: event.email, password: event.password);
+      emit(AppStateLoggedIn(user: userCreds.user!, images: const []));
+    } on FirebaseAuthException catch (e) {
+      emit(AppStateInRegistrationView(authError: AuthError.from(e)));
+      return;
+    } catch (e) {
+      emit(const AppStateInRegistrationView(authError: AuthErrorUnknown()));
+      return;
+    }
+  }
+
+  _onLogIn(event, emit) async {
+    emit(const AppStateLoggedOut(isLoading: true));
+
+    try {
+      final userCreds = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: event.email, password: event.password);
+      final images = await getImages(userCreds.user!.uid);
+      emit(AppStateLoggedIn(user: userCreds.user!, images: images));
+    } on FirebaseAuthException catch (e) {
+      emit(AppStateLoggedOut(authError: AuthError.from(e)));
+      return;
+    } catch (e) {
+      emit(const AppStateLoggedOut(authError: AuthErrorUnknown()));
+      return;
+    }
+  }
+
+  _onLogOut(event, emit) async {
+    final user = state.user;
+    if (user == null) {
+      emit(const AppStateLoggedOut());
+      return;
+    }
+
+    emit(AppStateLoggedIn(
       isLoading: true,
-      loginError: null,
-      loginHandle: state.loginHandle,
-      fetchedNotes: null,
+      user: user,
+      images: state.images ?? [],
     ));
 
-    if (state.loginHandle != const LoginHandle.fooBar()) {
-      emit(AppState(
+    try {
+      await FirebaseAuth.instance.signOut();
+      emit(const AppStateLoggedOut());
+    } on FirebaseAuthException catch (e) {
+      emit(AppStateLoggedIn(
         isLoading: false,
-        loginError: LoginErrors.invalidHandle,
-        loginHandle: state.loginHandle,
-        fetchedNotes: null,
+        user: user,
+        images: state.images ?? [],
+        authError: AuthError.from(e),
+      ));
+      return;
+    } catch (e) {
+      emit(AppStateLoggedIn(
+        isLoading: false,
+        user: user,
+        images: state.images ?? [],
+        authError: const AuthErrorUnknown(),
+      ));
+      return;
+    }
+  }
+
+  _onDeleteAccount(event, emit) async {
+    final user = state.user;
+    if (user == null) {
+      emit(const AppStateLoggedOut());
+      return;
+    }
+
+    emit(AppStateLoggedIn(
+      isLoading: true,
+      user: user,
+      images: state.images ?? [],
+    ));
+
+    try {
+      final folder = FirebaseStorage.instance.ref(user.uid);
+      await folder.delete();
+      await user.delete();
+      FirebaseAuth.instance.signOut();
+      emit(const AppStateLoggedOut());
+    } on FirebaseAuthException catch (e) {
+      emit(AppStateLoggedIn(
+        isLoading: false,
+        user: user,
+        images: state.images ?? [],
+        authError: AuthError.from(e),
+      ));
+      return;
+    } catch (e) {
+      emit(AppStateLoggedIn(
+        isLoading: false,
+        user: user,
+        images: state.images ?? [],
+        authError: const AuthErrorUnknown(),
       ));
       return;
     }
 
-    final notes = await notesApi.getNotes(loginHandle: state.loginHandle!);
+    await user.delete();
+    emit(const AppStateLoggedOut());
+  }
 
-    emit(AppState(
-      isLoading: false,
-      loginError: null,
-      loginHandle: state.loginHandle,
-      fetchedNotes: notes,
+  _onUploadImage(event, emit) async {
+    final user = state.user;
+    if (user == null) {
+      emit(const AppStateLoggedOut());
+      return;
+    }
+
+    emit(AppStateLoggedIn(
+      isLoading: true,
+      user: user,
+      images: state.images ?? [],
     ));
+
+    await uploadImage(user.uid, event.imagePath);
+    final images = await getImages(user.uid);
+    emit(AppStateLoggedIn(
+      isLoading: false,
+      user: user,
+      images: images,
+    ));
+  }
+
+  Future<List<Reference>> getImages(String uid) {
+    return FirebaseStorage.instance
+        .ref('users/$uid/images')
+        .listAll()
+        .then((result) => result.items);
   }
 }

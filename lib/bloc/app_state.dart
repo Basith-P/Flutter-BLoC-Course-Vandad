@@ -1,32 +1,56 @@
-import 'package:flutter/foundation.dart' show immutable;
-
-import '../models.dart';
+part of 'app_bloc.dart';
 
 @immutable
-class AppState {
+abstract class AppState extends Equatable {
   final bool isLoading;
-  final LoginErrors? loginError;
-  final LoginHandle? loginHandle;
-  final Iterable<Note>? fetchedNotes;
+  final AuthError? authError;
 
-  const AppState.empty()
-      : isLoading = false,
-        loginError = null,
-        loginHandle = null,
-        fetchedNotes = null;
+  const AppState({this.isLoading = false, this.authError});
+}
 
-  const AppState({
-    required this.isLoading,
-    required this.loginError,
-    required this.loginHandle,
-    required this.fetchedNotes,
-  });
+@immutable
+class AppStateLoggedIn extends AppState {
+  final User user;
+  final List<Reference> images;
+
+  const AppStateLoggedIn({
+    required this.user,
+    required this.images,
+    bool isLoading = false,
+    AuthError? authError,
+  }) : super(isLoading: isLoading, authError: authError);
 
   @override
-  String toString() => {
-        'isLoading': isLoading,
-        'loginError': loginError,
-        'loginHandle': loginHandle,
-        'fetchedNotes': fetchedNotes
-      }.toString();
+  List<Object?> get props => [user, images, isLoading, authError];
+
+  @override
+  String toString() => 'AppStateLoggedIn, images: ${images.length}}';
+}
+
+@immutable
+class AppStateLoggedOut extends AppState {
+  const AppStateLoggedOut({
+    bool isLoading = false,
+    AuthError? authError,
+  }) : super(isLoading: isLoading, authError: authError);
+
+  @override
+  List<Object?> get props => [isLoading, authError];
+
+  @override
+  String toString() => 'AppStateLoggedOut, authError: $authError';
+}
+
+@immutable
+class AppStateInRegistrationView extends AppState {
+  const AppStateInRegistrationView({
+    bool isLoading = false,
+    AuthError? authError,
+  }) : super(isLoading: isLoading, authError: authError);
+
+  @override
+  List<Object?> get props => [isLoading, authError];
+
+  @override
+  String toString() => 'AppStateRegistration, authError: $authError';
 }
