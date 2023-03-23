@@ -2,7 +2,7 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:meta/meta.dart';
+import 'package:flutter/foundation.dart' show immutable;
 
 import '../auth/auth_errors.dart';
 import '../utils/extensions.dart';
@@ -165,19 +165,28 @@ class AppBloc extends Bloc<AppEvent, AppState> {
       images: state.images ?? [],
     ));
 
-    await uploadImage(user.uid, event.imagePath);
-    final images = await getImages(user.uid);
-    emit(AppStateLoggedIn(
-      isLoading: false,
-      user: user,
-      images: images,
-    ));
+    try {
+      await uploadImage(user.uid, event.imagePath);
+      final images = await getImages(user.uid);
+      emit(AppStateLoggedIn(
+        isLoading: false,
+        user: user,
+        images: images,
+      ));
+    } catch (e) {
+      emit(AppStateLoggedIn(
+        isLoading: false,
+        user: user,
+        images: state.images ?? [],
+        authError: const AuthErrorUnknown(),
+      ));
+      return;
+    }
   }
 
   Future<List<Reference>> getImages(String uid) {
-    return FirebaseStorage.instance
-        .ref('users/$uid/images')
-        .listAll()
-        .then((result) => result.items);
+    return FirebaseStorage.instance.ref(uid).listAll().then((result) {
+      return result.items;
+    });
   }
 }

@@ -5,12 +5,22 @@ import '../bloc/app_bloc.dart';
 
 extension GetUser on AppState {
   User? get user {
-    return (this as AppStateLoggedIn?)?.user;
+    final cls = this;
+    if (cls is AppStateLoggedIn) {
+      return cls.user;
+    } else {
+      return null;
+    }
   }
 }
 
 extension GetImages on AppState {
   List<Reference>? get images {
-    return (this as AppStateLoggedIn?)?.images;
+    final cls = this;
+    if (cls is AppStateLoggedIn) {
+      return cls.images;
+    } else {
+      return null;
+    }
   }
 }

@@ -6,8 +6,8 @@ import '../bloc/app_bloc.dart';
 import '../utils/if_debugging.dart';
 import '../utils/vars/input_decorations.dart';
 
-class LoginView extends HookWidget {
-  const LoginView({Key? key}) : super(key: key);
+class RegisterView extends HookWidget {
+  const RegisterView({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +27,7 @@ class LoginView extends HookWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Login',
+              'Register',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineLarge,
             ),
@@ -46,7 +46,7 @@ class LoginView extends HookWidget {
             ),
             const SizedBox(height: 16.0),
             TextButton(
-              onPressed: () => appBloc.add(AppEventLogIn(
+              onPressed: () => appBloc.add(AppEventRegister(
                   email: emailController.text,
                   password: passwordController.text)),
               style: ElevatedButton.styleFrom(
@@ -55,7 +55,7 @@ class LoginView extends HookWidget {
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 backgroundColor: Theme.of(context).colorScheme.primary,
               ),
-              child: const Text('Login'),
+              child: const Text('Register'),
             ),
             const SizedBox(height: 16.0),
             Text(
@@ -64,13 +64,13 @@ class LoginView extends HookWidget {
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             TextButton(
-              onPressed: () => appBloc.add(const AppEventGoToRegistration()),
+              onPressed: () => appBloc.add(const AppEventGoToLogin()),
               style: ElevatedButton.styleFrom(
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10.0)),
                 foregroundColor: Theme.of(context).colorScheme.primary,
               ),
-              child: const Text('Create an account'),
+              child: const Text('Login instead'),
             ),
           ],
         ),
